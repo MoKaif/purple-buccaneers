@@ -21,6 +21,24 @@ network, bind to all interfaces:
 npx next dev -H 0.0.0.0 -p 3001
 ```
 
+## Scripts
+
+| Script | Purpose |
+| --- | --- |
+| `npm run dev` | Start the local development server. |
+| `npm run build` | Create a production build. |
+| `npm run start` | Start the production server. |
+| `npm run lint` | Run the Next.js linter. |
+| `npm run typecheck` | Check TypeScript types without emitting files. |
+
+## Project structure
+
+- `app/` contains the App Router pages, layouts, and route handlers.
+- `components/` contains reusable site, admin, and UI components.
+- `hooks/` contains custom React hooks.
+- `lib/` contains shared utilities, data access, types, and authentication helpers.
+- `supabase/` contains database migrations.
+
 ## Environment variables
 
 | Variable | Required | Purpose |
