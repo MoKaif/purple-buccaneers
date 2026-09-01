@@ -52,8 +52,9 @@ function AdminContent({ children }: { children: React.ReactNode }) {
     <div className="min-h-screen bg-background">
       {/* Mobile sidebar toggle */}
       <button
-        className="fixed top-4 left-4 z-50 lg:hidden p-2 rounded-lg glass"
+        className="fixed left-4 top-4 z-50 rounded-md border border-border bg-card p-2 lg:hidden"
         onClick={() => setSidebarOpen(!sidebarOpen)}
+        aria-label={sidebarOpen ? 'Close admin navigation' : 'Open admin navigation'}
       >
         {sidebarOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
       </button>
@@ -61,19 +62,21 @@ function AdminContent({ children }: { children: React.ReactNode }) {
       {/* Sidebar */}
       <aside
         className={cn(
-          'fixed top-0 left-0 bottom-0 w-64 glass-strong border-r border-border/50 z-40 transition-transform duration-300',
+          'fixed bottom-0 left-0 top-0 z-40 w-64 border-r border-border bg-[#0d0b12] transition-transform duration-300',
           sidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'
         )}
       >
-        <div className="p-4">
-          <div className="flex items-center gap-2 mb-8 px-2">
-            <Skull className="h-6 w-6 text-primary" />
-            <span className="font-orbitron font-bold text-sm">
-              <span className="text-primary">Admin</span> Portal
-            </span>
+        <div className="flex h-full flex-col p-4">
+          <div className="mb-8 flex items-center gap-3 border-b border-border px-2 pb-5">
+            <span className="flex h-9 w-9 items-center justify-center rounded-md bg-primary text-white"><Skull className="h-5 w-5" /></span>
+            <div>
+              <span className="block text-sm font-semibold">Purple Buccaneers</span>
+              <span className="text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Operations</span>
+            </div>
           </div>
 
-          <nav className="space-y-1">
+          <p className="mb-2 px-3 text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Workspace</p>
+          <nav className="space-y-0.5">
             {sidebarLinks.map((link) => {
               const active = pathname === link.href;
               return (
@@ -82,10 +85,10 @@ function AdminContent({ children }: { children: React.ReactNode }) {
                   href={link.href}
                   onClick={() => setSidebarOpen(false)}
                   className={cn(
-                    'flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors',
+                    'flex items-center gap-3 rounded-md border-l-2 px-3 py-2.5 text-sm font-medium transition-colors',
                     active
-                      ? 'bg-primary/15 text-primary'
-                      : 'text-muted-foreground hover:text-foreground hover:bg-white/5'
+                      ? 'border-primary bg-primary/10 text-foreground'
+                      : 'border-transparent text-muted-foreground hover:bg-white/[0.03] hover:text-foreground'
                   )}
                 >
                   <link.icon className="h-4 w-4" />
@@ -95,7 +98,7 @@ function AdminContent({ children }: { children: React.ReactNode }) {
             })}
           </nav>
 
-          <div className="mt-8 pt-4 border-t border-border/50">
+          <div className="mt-auto border-t border-border pt-4">
             <Button
               variant="outline"
               size="sm"
@@ -115,8 +118,8 @@ function AdminContent({ children }: { children: React.ReactNode }) {
       )}
 
       {/* Main content */}
-      <div className="lg:ml-64 p-4 sm:p-6 lg:p-8">
-        {children}
+      <div className="p-4 pt-20 sm:p-6 sm:pt-20 lg:ml-64 lg:p-10">
+        <div className="mx-auto max-w-7xl">{children}</div>
       </div>
     </div>
   );

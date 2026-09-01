@@ -95,7 +95,6 @@ export function calculatePlayerStats(
   let losses = 0;
   let draws = 0;
   let goals = 0;
-  let assists = 0;
   const form: ('W' | 'D' | 'L')[] = [];
 
   for (const match of completed) {
@@ -104,8 +103,6 @@ export function calculatePlayerStats(
     const oppScore = isHome ? match.away_score : match.home_score;
 
     goals += myScore;
-    // Approximate assists as 30% of goals scored (not tracked separately)
-    assists += Math.floor(myScore * 0.3);
 
     if (myScore > oppScore) {
       wins++;
@@ -127,7 +124,8 @@ export function calculatePlayerStats(
     losses,
     draws,
     goals,
-    assists,
+    // Assists are not part of the match schema. Keep this honest until they are tracked.
+    assists: 0,
     form: form.slice(-5),
     achievements: player.achievements || [],
     played: completed.length,

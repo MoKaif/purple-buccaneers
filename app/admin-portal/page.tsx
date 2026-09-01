@@ -2,96 +2,100 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { motion } from 'framer-motion';
-import { Users, Calendar, Trophy, Bell, Image, Award, Settings, ArrowRight, Activity } from 'lucide-react';
-import { GlassCard } from '@/components/site/glass-card';
+import { ArrowUpRight, Bell, Calendar, Image, Trophy, Users } from 'lucide-react';
+import { AdminPageHeader } from '@/components/admin/shared';
+
+type DashboardStats = {
+  members: number;
+  events: number;
+  seasons: number;
+  announcements: number;
+  gallery: number;
+};
+
+const EMPTY_STATS: DashboardStats = { members: 0, events: 0, seasons: 0, announcements: 0, gallery: 0 };
 
 export default function AdminDashboard() {
-  const [stats, setStats] = useState({ members: 0, events: 0, seasons: 0, announcements: 0, gallery: 0, hallOfFame: 0 });
+  const [stats, setStats] = useState<DashboardStats>(EMPTY_STATS);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(false);
 
   useEffect(() => {
-    (async () => {
-      const [m, e, s, a, g, h] = await Promise.all([
-        fetch('/api/data/all-members').then((r) => r.json()),
-        fetch('/api/data/events').then((r) => r.json()),
-        fetch('/api/data/seasons').then((r) => r.json()),
-        fetch('/api/data/announcements').then((r) => r.json()),
-        fetch('/api/data/gallery').then((r) => r.json()),
-        fetch('/api/data/hall-of-fame').then((r) => r.json()),
-      ]);
-      setStats({
-        members: m.length,
-        events: e.length,
-        seasons: s.length,
-        announcements: a.length,
-        gallery: g.length,
-        hallOfFame: h.length,
-      });
-    })();
+    const load = async () => {
+      try {
+        const endpoints = ['all-members', 'events', 'seasons', 'announcements', 'gallery'];
+        const responses = await Promise.all(endpoints.map((endpoint) => fetch(`/api/data/${endpoint}`)));
+        if (responses.some((response) => !response.ok)) throw new Error('Dashboard request failed');
+        const [members, events, seasons, announcements, gallery] = await Promise.all(responses.map((response) => response.json()));
+        setStats({
+          members: members.length,
+          events: events.length,
+          seasons: seasons.length,
+          announcements: announcements.length,
+          gallery: gallery.length,
+        });
+      } catch {
+        setError(true);
+      } finally {
+        setLoading(false);
+      }
+    };
+    load();
   }, []);
 
-  const cards = [
+  const records = [
     { label: 'Members', value: stats.members, icon: Users, href: '/admin-portal/members' },
     { label: 'Events', value: stats.events, icon: Calendar, href: '/admin-portal/events' },
     { label: 'Seasons', value: stats.seasons, icon: Trophy, href: '/admin-portal/league' },
-    { label: 'Announcements', value: stats.announcements, icon: Bell, href: '/admin-portal/announcements' },
-    { label: 'Gallery Items', value: stats.gallery, icon: Image, href: '/admin-portal/gallery' },
-    { label: 'Hall of Fame', value: stats.hallOfFame, icon: Award, href: '/admin-portal/hall-of-fame' },
+    { label: 'Updates', value: stats.announcements, icon: Bell, href: '/admin-portal/announcements' },
+    { label: 'Media', value: stats.gallery, icon: Image, href: '/admin-portal/gallery' },
   ];
 
-  const quickLinks = [
-    { label: 'Edit Homepage', desc: 'Update welcome message & stats', icon: Settings, href: '/admin-portal/homepage' },
-    { label: 'Manage Members', desc: 'Add or edit crew members', icon: Users, href: '/admin-portal/members' },
-    { label: 'Create Event', desc: 'Schedule a new community event', icon: Calendar, href: '/admin-portal/events' },
-    { label: 'Enter Match Results', desc: 'Update league standings', icon: Trophy, href: '/admin-portal/league' },
+  const actions = [
+    { index: '01', label: 'Register tournament participants', detail: 'Add the confirmed players to the active FIFA season.', href: '/admin-portal/league' },
+    { index: '02', label: 'Publish the fixture list', detail: 'Schedule rounds, dates and player matchups.', href: '/admin-portal/league' },
+    { index: '03', label: 'Update community events', detail: 'Keep upcoming sessions and tournament dates current.', href: '/admin-portal/events' },
   ];
 
   return (
     <div>
-      <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4 }}>
-        <h1 className="font-orbitron text-2xl font-bold mb-2">Dashboard</h1>
-        <p className="text-sm text-muted-foreground mb-8">Welcome back, Captain. Here is your community overview.</p>
-      </motion.div>
+      <AdminPageHeader title="Overview" description="A compact view of the records currently published across the community site." />
 
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 mb-8">
-        {cards.map((card, i) => (
-          <motion.div key={card.label} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05 }}>
-            <Link href={card.href}>
-              <GlassCard className="hover:border-primary/30 transition-all cursor-pointer">
-                <card.icon className="h-6 w-6 text-primary mb-3" />
-                <div className="font-orbitron text-2xl font-bold">{card.value}</div>
-                <div className="text-xs text-muted-foreground mt-1">{card.label}</div>
-              </GlassCard>
-            </Link>
-          </motion.div>
-        ))}
-      </div>
+      {error && (
+        <div className="mb-6 border-l-2 border-destructive bg-destructive/10 px-4 py-3 text-sm text-destructive">
+          Some totals could not be loaded. The management pages are still available below.
+        </div>
+      )}
 
-      <h2 className="font-orbitron text-lg font-bold mb-4 flex items-center gap-2">
-        <Activity className="h-5 w-5 text-primary" /> Quick Actions
-      </h2>
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        {quickLinks.map((link, i) => (
-          <motion.div key={link.href} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05 }}>
-            <Link href={link.href}>
-              <GlassCard className="group cursor-pointer">
-                <div className="flex items-center gap-4">
-                  <div className="p-3 rounded-xl bg-primary/10 text-primary group-hover:bg-primary/20 transition-colors">
-                    <link.icon className="h-6 w-6" />
-                  </div>
-                  <div className="flex-1">
-                    <h4 className="font-semibold flex items-center gap-1">
-                      {link.label}
-                      <ArrowRight className="h-4 w-4 opacity-0 group-hover:opacity-100 group-hover:translate-x-1 transition-all" />
-                    </h4>
-                    <p className="text-xs text-muted-foreground">{link.desc}</p>
-                  </div>
-                </div>
-              </GlassCard>
-            </Link>
-          </motion.div>
+      <section aria-label="Published record totals" className="grid grid-cols-2 overflow-hidden rounded-lg border border-border bg-border sm:grid-cols-3 lg:grid-cols-5">
+        {records.map((record) => (
+          <Link key={record.label} href={record.href} className="group bg-card p-5 transition-colors hover:bg-secondary/50">
+            <div className="flex items-start justify-between">
+              <record.icon className="h-4 w-4 text-muted-foreground transition-colors group-hover:text-primary" />
+              <ArrowUpRight className="h-3.5 w-3.5 text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100" />
+            </div>
+            <p className="mt-8 font-orbitron text-2xl font-semibold">{loading ? '—' : record.value}</p>
+            <p className="mt-1 text-xs text-muted-foreground">{record.label}</p>
+          </Link>
         ))}
-      </div>
+      </section>
+
+      <section className="mt-10 grid gap-6 lg:grid-cols-[260px_1fr]">
+        <div>
+          <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-primary">Tournament setup</p>
+          <h2 className="mt-2 text-xl font-semibold tracking-tight">Ready the next competition.</h2>
+          <p className="mt-3 text-sm leading-6 text-muted-foreground">Work through the live data in the order it will be published.</p>
+        </div>
+        <div className="overflow-hidden rounded-lg border border-border bg-card">
+          {actions.map((action) => (
+            <Link key={action.index} href={action.href} className="group grid gap-3 border-b border-border px-5 py-5 last:border-b-0 sm:grid-cols-[40px_1fr_auto] sm:items-center">
+              <span className="font-orbitron text-[10px] text-muted-foreground">{action.index}</span>
+              <div><h3 className="text-sm font-semibold">{action.label}</h3><p className="mt-1 text-xs leading-5 text-muted-foreground">{action.detail}</p></div>
+              <ArrowUpRight className="hidden h-4 w-4 text-muted-foreground transition-transform group-hover:-translate-y-0.5 group-hover:translate-x-0.5 group-hover:text-primary sm:block" />
+            </Link>
+          ))}
+        </div>
+      </section>
     </div>
   );
 }
