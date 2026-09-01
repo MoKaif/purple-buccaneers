@@ -1,15 +1,15 @@
 'use client';
 
-import { useState } from 'react';
-import { motion } from 'framer-motion';
-import { Trophy, Calendar, BarChart3, Users, History, Crown, Target, Shield, TrendingUp, Award } from 'lucide-react';
-import { GlassCard } from '@/components/site/glass-card';
+import { useMemo, useState } from 'react';
+import Image from 'next/image';
+import { Award, CalendarDays, ChevronRight, History, Shield, Target, Users } from 'lucide-react';
 import { FormIndicator } from '@/components/site/form-indicator';
-import { Badge, BadgeList } from '@/components/site/badge';
+import { BadgeList } from '@/components/site/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { calculateStandings, calculatePlayerStats } from '@/lib/standings';
-import type { LeagueSeason, LeaguePlayer, LeagueMatch, StandingRow, PlayerStats } from '@/lib/types';
+import { cn } from '@/lib/utils';
+import type { LeagueSeason, LeaguePlayer, LeagueMatch, PlayerStats } from '@/lib/types';
 
 interface LeagueClientProps {
   seasons: LeagueSeason[];
@@ -18,388 +18,275 @@ interface LeagueClientProps {
   initialSeasonId: string | null;
 }
 
-export function LeagueClient({ seasons, players, matches, initialSeasonId }: LeagueClientProps) {
-  const [activeSeasonId, setActiveSeasonId] = useState<string | null>(initialSeasonId);
-  const [selectedPlayer, setSelectedPlayer] = useState<string | null>(null);
+function PlayerAvatar({ player, size = 'md' }: { player?: LeaguePlayer; size?: 'sm' | 'md' | 'lg' }) {
+  const sizeClass = size === 'sm' ? 'h-7 w-7 text-[10px]' : size === 'lg' ? 'h-12 w-12 text-base' : 'h-9 w-9 text-xs';
 
-  const activeSeason = seasons.find((s) => s.id === activeSeasonId) || null;
-  const setActiveSeason = (season: LeagueSeason | null) => setActiveSeasonId(season?.id ?? null);
-
-  const seasonMatches = activeSeason ? matches.filter((m) => m.season_id === activeSeason.id) : [];
-  const seasonPlayers = activeSeason ? players.filter((p) => p.season_id === activeSeason.id) : [];
-  const standings = calculateStandings(seasonMatches, seasonPlayers);
-  const fixtures = seasonMatches.filter((m) => m.status === 'scheduled');
-  const results = seasonMatches.filter((m) => m.status === 'completed').reverse();
-  const completedSeasons = seasons.filter((s) => s.status === 'completed');
-
-  const playerStats: PlayerStats[] = seasonPlayers.map((p) => calculatePlayerStats(p.id, seasonMatches, seasonPlayers)!).filter(Boolean);
-  const topScorer = [...playerStats].sort((a, b) => b.goals - a.goals)[0];
-  const bestDefense = [...standings].sort((a, b) => a.goalsAgainst - b.goalsAgainst)[0];
-
-  const getPlayerName = (id: string | null) => seasonPlayers.find((p) => p.id === id)?.username || 'TBD';
-  const getPlayerAvatar = (id: string | null) => seasonPlayers.find((p) => p.id === id)?.avatar_url;
+  if (player?.avatar_url) {
+    const pixels = size === 'sm' ? 28 : size === 'lg' ? 48 : 36;
+    return <Image src={player.avatar_url} alt="" width={pixels} height={pixels} className={cn(sizeClass, 'shrink-0 rounded-full border border-white/10 object-cover')} />;
+  }
 
   return (
-    <div>
-      <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-        {/* Season selector + spotlight cards */}
-        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-8">
-          <div className="flex items-center gap-3">
-            <Trophy className="h-6 w-6 text-primary" />
-            <select
-              value={activeSeason?.id || ''}
-              onChange={(e) => setActiveSeason(seasons.find((s) => s.id === e.target.value) || null)}
-              className="bg-card border border-border rounded-lg px-4 py-2 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-primary"
-            >
-              {seasons.map((s) => (
-                <option key={s.id} value={s.id}>{s.name} {s.status === 'active' && '(Active)'}</option>
-              ))}
-            </select>
-          </div>
-          <div className="flex items-center gap-2 text-sm text-muted-foreground">
-            <Calendar className="h-4 w-4" />
-            Week {activeSeason?.current_week || 1}
-          </div>
-        </div>
+    <span className={cn(sizeClass, 'flex shrink-0 items-center justify-center rounded-full bg-secondary font-semibold text-foreground')}>
+      {player?.username?.slice(0, 1).toUpperCase() || '?'}
+    </span>
+  );
+}
 
-        {/* Spotlight cards */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
-          <GlassCard>
-            <div className="flex items-center gap-3 mb-2">
-              <Crown className="h-5 w-5 text-yellow-400" />
-              <span className="text-sm text-muted-foreground">League Leader</span>
-            </div>
-            <div className="font-orbitron text-xl font-bold">{standings[0]?.username || '—'}</div>
-            <div className="text-sm text-primary mt-1">{standings[0]?.points || 0} pts</div>
-          </GlassCard>
-          <GlassCard>
-            <div className="flex items-center gap-3 mb-2">
-              <Target className="h-5 w-5 text-success" />
-              <span className="text-sm text-muted-foreground">Top Scorer</span>
-            </div>
-            <div className="font-orbitron text-xl font-bold">{topScorer?.username || '—'}</div>
-            <div className="text-sm text-success mt-1">{topScorer?.goals || 0} goals</div>
-          </GlassCard>
-          <GlassCard>
-            <div className="flex items-center gap-3 mb-2">
-              <Shield className="h-5 w-5 text-blue-400" />
-              <span className="text-sm text-muted-foreground">Best Defense</span>
-            </div>
-            <div className="font-orbitron text-xl font-bold">{bestDefense?.username || '—'}</div>
-            <div className="text-sm text-blue-400 mt-1">{bestDefense?.goalsAgainst ?? 0} conceded</div>
-          </GlassCard>
-        </div>
-
-        <Tabs defaultValue="standings" className="w-full">
-          <TabsList className="grid w-full grid-cols-3 md:grid-cols-6 mb-6 h-auto">
-            <TabsTrigger value="standings" className="text-xs md:text-sm">Standings</TabsTrigger>
-            <TabsTrigger value="fixtures" className="text-xs md:text-sm">Fixtures</TabsTrigger>
-            <TabsTrigger value="results" className="text-xs md:text-sm">Results</TabsTrigger>
-            <TabsTrigger value="players" className="text-xs md:text-sm">Players</TabsTrigger>
-            <TabsTrigger value="stats" className="text-xs md:text-sm">Statistics</TabsTrigger>
-            <TabsTrigger value="history" className="text-xs md:text-sm">History</TabsTrigger>
-          </TabsList>
-
-          {/* Standings */}
-          <TabsContent value="standings">
-            <GlassCard hover={false} className="p-0 overflow-x-auto">
-              <Table>
-                <TableHeader>
-                  <TableRow className="border-border/50 hover:bg-transparent">
-                    <TableHead className="w-12">#</TableHead>
-                    <TableHead>Player</TableHead>
-                    <TableHead className="text-center">P</TableHead>
-                    <TableHead className="text-center">W</TableHead>
-                    <TableHead className="text-center">D</TableHead>
-                    <TableHead className="text-center">L</TableHead>
-                    <TableHead className="text-center">GF</TableHead>
-                    <TableHead className="text-center">GA</TableHead>
-                    <TableHead className="text-center">GD</TableHead>
-                    <TableHead className="text-center font-bold text-primary">Pts</TableHead>
-                    <TableHead className="text-center">Form</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {standings.map((row, i) => (
-                    <TableRow key={row.playerId} className="border-border/30">
-                      <TableCell className="font-bold">
-                        <span className={i === 0 ? 'text-yellow-400' : i < 3 ? 'text-primary' : ''}>{i + 1}</span>
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex items-center gap-2">
-                          {row.avatarUrl ? (
-                            <img src={row.avatarUrl} alt="" className="w-7 h-7 rounded-full" />
-                          ) : (
-                            <div className="w-7 h-7 rounded-full bg-primary/20 flex items-center justify-center text-xs font-bold text-primary">{row.username[0]}</div>
-                          )}
-                          <span className="font-medium">{row.username}</span>
-                        </div>
-                      </TableCell>
-                      <TableCell className="text-center">{row.played}</TableCell>
-                      <TableCell className="text-center text-success">{row.wins}</TableCell>
-                      <TableCell className="text-center text-muted-foreground">{row.draws}</TableCell>
-                      <TableCell className="text-center text-destructive">{row.losses}</TableCell>
-                      <TableCell className="text-center">{row.goalsFor}</TableCell>
-                      <TableCell className="text-center">{row.goalsAgainst}</TableCell>
-                      <TableCell className="text-center">{row.goalDifference > 0 ? `+${row.goalDifference}` : row.goalDifference}</TableCell>
-                      <TableCell className="text-center font-bold text-primary">{row.points}</TableCell>
-                      <TableCell><FormIndicator form={row.form} /></TableCell>
-                    </TableRow>
-                  ))}
-                  {standings.length === 0 && (
-                    <TableRow>
-                      <TableCell colSpan={11} className="text-center text-muted-foreground py-8">No matches played yet</TableCell>
-                    </TableRow>
-                  )}
-                </TableBody>
-              </Table>
-            </GlassCard>
-          </TabsContent>
-
-          {/* Fixtures */}
-          <TabsContent value="fixtures">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {fixtures.map((match, i) => (
-                <motion.div key={match.id} initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ delay: i * 0.03 }}>
-                  <GlassCard hover={false}>
-                    <div className="flex items-center justify-between mb-3">
-                      <Badge text={`Week ${match.week}`} variant="purple" />
-                      {match.match_date && <span className="text-xs text-muted-foreground">{new Date(match.match_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</span>}
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        {getPlayerAvatar(match.home_player_id) ? (
-                          <img src={getPlayerAvatar(match.home_player_id)!} alt="" className="w-8 h-8 rounded-full" />
-                        ) : (
-                          <div className="w-8 h-8 rounded-full bg-primary/20" />
-                        )}
-                        <span className="font-medium text-sm">{getPlayerName(match.home_player_id)}</span>
-                      </div>
-                      <span className="text-muted-foreground text-sm">vs</span>
-                      <div className="flex items-center gap-2">
-                        <span className="font-medium text-sm">{getPlayerName(match.away_player_id)}</span>
-                        {getPlayerAvatar(match.away_player_id) ? (
-                          <img src={getPlayerAvatar(match.away_player_id)!} alt="" className="w-8 h-8 rounded-full" />
-                        ) : (
-                          <div className="w-8 h-8 rounded-full bg-primary/20" />
-                        )}
-                      </div>
-                    </div>
-                  </GlassCard>
-                </motion.div>
-              ))}
-              {fixtures.length === 0 && (
-                <GlassCard hover={false} className="col-span-2 text-center text-muted-foreground">No upcoming fixtures</GlassCard>
-              )}
-            </div>
-          </TabsContent>
-
-          {/* Results */}
-          <TabsContent value="results">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {results.map((match, i) => (
-                <motion.div key={match.id} initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ delay: i * 0.03 }}>
-                  <GlassCard hover={false}>
-                    <div className="flex items-center justify-between mb-3">
-                      <Badge text={`Week ${match.week}`} variant="green" />
-                      <span className="text-xs text-muted-foreground">Completed</span>
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2 flex-1">
-                        {getPlayerAvatar(match.home_player_id) ? (
-                          <img src={getPlayerAvatar(match.home_player_id)!} alt="" className="w-8 h-8 rounded-full" />
-                        ) : (
-                          <div className="w-8 h-8 rounded-full bg-primary/20" />
-                        )}
-                        <span className={`font-medium text-sm ${match.home_score > match.away_score ? 'text-success' : ''}`}>{getPlayerName(match.home_player_id)}</span>
-                      </div>
-                      <div className="font-orbitron text-lg font-bold px-4">
-                        {match.home_score} <span className="text-muted-foreground mx-1">-</span> {match.away_score}
-                      </div>
-                      <div className="flex items-center gap-2 flex-1 justify-end">
-                        <span className={`font-medium text-sm ${match.away_score > match.home_score ? 'text-success' : ''}`}>{getPlayerName(match.away_player_id)}</span>
-                        {getPlayerAvatar(match.away_player_id) ? (
-                          <img src={getPlayerAvatar(match.away_player_id)!} alt="" className="w-8 h-8 rounded-full" />
-                        ) : (
-                          <div className="w-8 h-8 rounded-full bg-primary/20" />
-                        )}
-                      </div>
-                    </div>
-                  </GlassCard>
-                </motion.div>
-              ))}
-              {results.length === 0 && (
-                <GlassCard hover={false} className="col-span-2 text-center text-muted-foreground">No results yet</GlassCard>
-              )}
-            </div>
-          </TabsContent>
-
-          {/* Players */}
-          <TabsContent value="players">
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {seasonPlayers.map((player, i) => {
-                const stats = calculatePlayerStats(player.id, seasonMatches, seasonPlayers);
-                return (
-                  <motion.div key={player.id} initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ delay: i * 0.05 }}>
-                    <GlassCard>
-                      <div className="flex items-center gap-3 mb-4">
-                        {player.avatar_url ? (
-                          <img src={player.avatar_url} alt={player.username} className="w-14 h-14 rounded-full border-2 border-primary/30" />
-                        ) : (
-                          <div className="w-14 h-14 rounded-full bg-primary/20 flex items-center justify-center text-xl font-bold text-primary">{player.username[0]}</div>
-                        )}
-                        <div>
-                          <h4 className="font-semibold">{player.username}</h4>
-                          <p className="text-xs text-muted-foreground">{stats?.played || 0} matches played</p>
-                        </div>
-                      </div>
-                      <div className="grid grid-cols-4 gap-2 text-center mb-4">
-                        <div><div className="font-bold text-success">{stats?.wins || 0}</div><div className="text-xs text-muted-foreground">W</div></div>
-                        <div><div className="font-bold text-muted-foreground">{stats?.draws || 0}</div><div className="text-xs text-muted-foreground">D</div></div>
-                        <div><div className="font-bold text-destructive">{stats?.losses || 0}</div><div className="text-xs text-muted-foreground">L</div></div>
-                        <div><div className="font-bold text-primary">{stats?.goals || 0}</div><div className="text-xs text-muted-foreground">G</div></div>
-                      </div>
-                      {stats && stats.form.length > 0 && (
-                        <div className="mb-3">
-                          <p className="text-xs text-muted-foreground mb-1.5">Current Form</p>
-                          <FormIndicator form={stats.form} />
-                        </div>
-                      )}
-                      {player.achievements && player.achievements.length > 0 && (
-                        <BadgeList badges={player.achievements} />
-                      )}
-                    </GlassCard>
-                  </motion.div>
-                );
-              })}
-              {seasonPlayers.length === 0 && (
-                <GlassCard hover={false} className="col-span-3 text-center text-muted-foreground">No players registered for this season</GlassCard>
-              )}
-            </div>
-          </TabsContent>
-
-          {/* Statistics */}
-          <TabsContent value="stats">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <GlassCard hover={false}>
-                <h3 className="font-orbitron text-lg font-bold mb-4 flex items-center gap-2"><TrendingUp className="h-5 w-5 text-primary" /> Top Scorers</h3>
-                <div className="space-y-3">
-                  {[...playerStats].sort((a, b) => b.goals - a.goals).slice(0, 5).map((p, i) => (
-                    <div key={p.playerId} className="flex items-center justify-between p-2 rounded-lg bg-white/5">
-                      <span className="flex items-center gap-2">
-                        <span className={`font-bold ${i === 0 ? 'text-yellow-400' : 'text-muted-foreground'}`}>{i + 1}</span>
-                        {p.username}
-                      </span>
-                      <span className="font-bold text-primary">{p.goals}</span>
-                    </div>
-                  ))}
-                  {playerStats.length === 0 && <p className="text-sm text-muted-foreground text-center">No data</p>}
-                </div>
-              </GlassCard>
-
-              <GlassCard hover={false}>
-                <h3 className="font-orbitron text-lg font-bold mb-4 flex items-center gap-2"><Award className="h-5 w-5 text-primary" /> Most Wins</h3>
-                <div className="space-y-3">
-                  {[...playerStats].sort((a, b) => b.wins - a.wins).slice(0, 5).map((p, i) => (
-                    <div key={p.playerId} className="flex items-center justify-between p-2 rounded-lg bg-white/5">
-                      <span className="flex items-center gap-2">
-                        <span className={`font-bold ${i === 0 ? 'text-yellow-400' : 'text-muted-foreground'}`}>{i + 1}</span>
-                        {p.username}
-                      </span>
-                      <span className="font-bold text-success">{p.wins}</span>
-                    </div>
-                  ))}
-                  {playerStats.length === 0 && <p className="text-sm text-muted-foreground text-center">No data</p>}
-                </div>
-              </GlassCard>
-
-              <GlassCard hover={false}>
-                <h3 className="font-orbitron text-lg font-bold mb-4 flex items-center gap-2"><Shield className="h-5 w-5 text-primary" /> Best Defenses</h3>
-                <div className="space-y-3">
-                  {[...standings].filter(s => s.played > 0).sort((a, b) => a.goalsAgainst - b.goalsAgainst).slice(0, 5).map((s, i) => (
-                    <div key={s.playerId} className="flex items-center justify-between p-2 rounded-lg bg-white/5">
-                      <span className="flex items-center gap-2">
-                        <span className={`font-bold ${i === 0 ? 'text-yellow-400' : 'text-muted-foreground'}`}>{i + 1}</span>
-                        {s.username}
-                      </span>
-                      <span className="font-bold text-blue-400">{s.goalsAgainst}</span>
-                    </div>
-                  ))}
-                  {standings.length === 0 && <p className="text-sm text-muted-foreground text-center">No data</p>}
-                </div>
-              </GlassCard>
-
-              <GlassCard hover={false}>
-                <h3 className="font-orbitron text-lg font-bold mb-4 flex items-center gap-2"><BarChart3 className="h-5 w-5 text-primary" /> Total Stats</h3>
-                <div className="grid grid-cols-2 gap-3">
-                  <div className="p-3 rounded-lg bg-white/5 text-center">
-                    <div className="font-orbitron text-2xl font-bold text-primary">{seasonMatches.filter(m => m.status === 'completed').length}</div>
-                    <div className="text-xs text-muted-foreground">Matches Played</div>
-                  </div>
-                  <div className="p-3 rounded-lg bg-white/5 text-center">
-                    <div className="font-orbitron text-2xl font-bold text-primary">{results.reduce((sum, m) => sum + m.home_score + m.away_score, 0)}</div>
-                    <div className="text-xs text-muted-foreground">Total Goals</div>
-                  </div>
-                  <div className="p-3 rounded-lg bg-white/5 text-center">
-                    <div className="font-orbitron text-2xl font-bold text-primary">{seasonPlayers.length}</div>
-                    <div className="text-xs text-muted-foreground">Players</div>
-                  </div>
-                  <div className="p-3 rounded-lg bg-white/5 text-center">
-                    <div className="font-orbitron text-2xl font-bold text-primary">{activeSeason?.current_week || 0}</div>
-                    <div className="text-xs text-muted-foreground">Current Week</div>
-                  </div>
-                </div>
-              </GlassCard>
-            </div>
-          </TabsContent>
-
-          {/* Season History */}
-          <TabsContent value="history">
-            <div className="space-y-4">
-              {completedSeasons.map((s, i) => {
-                const sMatches = matches.filter((m) => m.season_id === s.id);
-                const sPlayers = players.filter((p) => p.season_id === s.id);
-                const sStandings = calculateStandings(sMatches, sPlayers);
-                const champion = sStandings[0];
-                return (
-                  <motion.div key={s.id} initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ delay: i * 0.05 }}>
-                    <GlassCard hover={false}>
-                      <div className="flex items-center justify-between mb-4">
-                        <h3 className="font-orbitron text-xl font-bold flex items-center gap-2">
-                          <Trophy className="h-5 w-5 text-yellow-400" /> {s.name}
-                        </h3>
-                        <Badge text="Completed" variant="purple" />
-                      </div>
-                      {champion && (
-                        <div className="flex items-center gap-3 p-3 rounded-xl bg-yellow-400/5 border border-yellow-400/10">
-                          <Crown className="h-6 w-6 text-yellow-400" />
-                          <div>
-                            <div className="text-xs text-muted-foreground">Champion</div>
-                            <div className="font-bold">{champion.username}</div>
-                          </div>
-                          <div className="ml-auto text-right">
-                            <div className="text-xs text-muted-foreground">Points</div>
-                            <div className="font-bold text-primary">{champion.points}</div>
-                          </div>
-                        </div>
-                      )}
-                      <div className="mt-4 grid grid-cols-2 md:grid-cols-4 gap-3 text-sm">
-                        <div><span className="text-muted-foreground">Matches: </span><span className="font-medium">{sMatches.filter(m => m.status === 'completed').length}</span></div>
-                        <div><span className="text-muted-foreground">Players: </span><span className="font-medium">{sPlayers.length}</span></div>
-                        <div><span className="text-muted-foreground">Goals: </span><span className="font-medium">{sMatches.filter(m => m.status === 'completed').reduce((sum, m) => sum + m.home_score + m.away_score, 0)}</span></div>
-                        <div><span className="text-muted-foreground">Weeks: </span><span className="font-medium">{s.current_week}</span></div>
-                      </div>
-                    </GlassCard>
-                  </motion.div>
-                );
-              })}
-              {completedSeasons.length === 0 && (
-                <GlassCard hover={false} className="text-center text-muted-foreground">No completed seasons yet</GlassCard>
-              )}
-            </div>
-          </TabsContent>
-        </Tabs>
-      </section>
+function EmptyState({ title, detail }: { title: string; detail: string }) {
+  return (
+    <div className="flex min-h-[220px] flex-col items-center justify-center px-6 text-center">
+      <div className="mb-4 h-px w-10 bg-primary" />
+      <h3 className="text-base font-semibold text-foreground">{title}</h3>
+      <p className="mt-1 max-w-sm text-sm leading-6 text-muted-foreground">{detail}</p>
     </div>
+  );
+}
+
+function Metric({ label, value, detail }: { label: string; value: string | number; detail: string }) {
+  return (
+    <div className="min-w-0 border-l border-border px-4 first:border-l-0 first:pl-0 sm:px-6">
+      <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{label}</p>
+      <p className="mt-2 truncate text-2xl font-semibold tracking-tight text-foreground">{value}</p>
+      <p className="mt-1 truncate text-xs text-muted-foreground">{detail}</p>
+    </div>
+  );
+}
+
+function MatchRow({ match, playerMap, completed }: { match: LeagueMatch; playerMap: Map<string, LeaguePlayer>; completed: boolean }) {
+  const home = match.home_player_id ? playerMap.get(match.home_player_id) : undefined;
+  const away = match.away_player_id ? playerMap.get(match.away_player_id) : undefined;
+  const matchDate = match.match_date ? new Date(match.match_date) : null;
+
+  return (
+    <article className="grid gap-4 border-b border-border px-4 py-4 last:border-b-0 sm:grid-cols-[120px_1fr_110px] sm:items-center sm:px-6">
+      <div className="flex items-center justify-between sm:block">
+        <span className="text-[10px] font-semibold uppercase tracking-[0.16em] text-primary">Week {match.week}</span>
+        <p className="mt-1 text-xs text-muted-foreground">
+          {matchDate ? matchDate.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : 'Date to be confirmed'}
+        </p>
+      </div>
+
+      <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-3">
+        <div className="flex min-w-0 items-center justify-end gap-2 text-right">
+          <span className="truncate text-sm font-medium">{home?.username || 'TBD'}</span>
+          <PlayerAvatar player={home} size="sm" />
+        </div>
+        <div className={cn('min-w-16 text-center font-orbitron font-semibold', completed ? 'text-lg text-foreground' : 'text-xs text-muted-foreground')}>
+          {completed ? `${match.home_score} : ${match.away_score}` : 'VS'}
+        </div>
+        <div className="flex min-w-0 items-center gap-2">
+          <PlayerAvatar player={away} size="sm" />
+          <span className="truncate text-sm font-medium">{away?.username || 'TBD'}</span>
+        </div>
+      </div>
+
+      <div className="flex items-center justify-between sm:justify-end">
+        <span className="text-xs text-muted-foreground sm:hidden">Status</span>
+        <span className={cn(
+          'rounded-full border px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wider',
+          completed ? 'border-success/20 bg-success/10 text-success' : 'border-primary/20 bg-primary/10 text-primary'
+        )}>
+          {completed ? 'Final' : 'Scheduled'}
+        </span>
+      </div>
+    </article>
+  );
+}
+
+export function LeagueClient({ seasons, players, matches, initialSeasonId }: LeagueClientProps) {
+  const [activeSeasonId, setActiveSeasonId] = useState<string | null>(initialSeasonId);
+  const activeSeason = seasons.find((season) => season.id === activeSeasonId) || null;
+  const seasonMatches = useMemo(
+    () => activeSeasonId ? matches.filter((match) => match.season_id === activeSeasonId) : [],
+    [activeSeasonId, matches]
+  );
+  const seasonPlayers = useMemo(
+    () => activeSeasonId ? players.filter((player) => player.season_id === activeSeasonId) : [],
+    [activeSeasonId, players]
+  );
+  const playerMap = useMemo(() => new Map(seasonPlayers.map((player) => [player.id, player])), [seasonPlayers]);
+  const standings = calculateStandings(seasonMatches, seasonPlayers);
+  const completedMatches = seasonMatches.filter((match) => match.status === 'completed');
+  const fixtures = seasonMatches
+    .filter((match) => match.status === 'scheduled')
+    .sort((a, b) => (a.match_date || '').localeCompare(b.match_date || '') || a.week - b.week);
+  const results = completedMatches.slice().sort((a, b) => (b.match_date || '').localeCompare(a.match_date || '') || b.week - a.week);
+  const completedSeasons = seasons.filter((season) => season.status === 'completed');
+  const playerStats = seasonPlayers
+    .map((player) => calculatePlayerStats(player.id, seasonMatches, seasonPlayers))
+    .filter((stats): stats is PlayerStats => Boolean(stats));
+  const totalGoals = completedMatches.reduce((total, match) => total + match.home_score + match.away_score, 0);
+  const topScorer = completedMatches.length ? playerStats.slice().sort((a, b) => b.goals - a.goals || b.wins - a.wins)[0] : null;
+
+  return (
+    <section className="mx-auto max-w-7xl px-4 pb-20 sm:px-6 lg:px-8">
+      <div className="mb-6 flex flex-col gap-4 border-y border-border py-4 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex items-center gap-3">
+          <span className="text-[10px] font-semibold uppercase tracking-[0.2em] text-muted-foreground">Competition</span>
+          <select
+            value={activeSeason?.id || ''}
+            onChange={(event) => setActiveSeasonId(event.target.value || null)}
+            className="min-w-0 rounded-md border border-border bg-card px-3 py-2 text-sm font-semibold outline-none transition-colors focus:border-primary"
+            aria-label="Select tournament season"
+          >
+            {seasons.length === 0 && <option value="">No seasons available</option>}
+            {seasons.map((season) => <option key={season.id} value={season.id}>{season.name}{season.status === 'active' ? ' — Active' : ''}</option>)}
+          </select>
+        </div>
+        <div className="flex items-center gap-4 text-xs text-muted-foreground">
+          <span className="flex items-center gap-1.5"><Users className="h-3.5 w-3.5" /> {seasonPlayers.length} participants</span>
+          <span className="h-3 w-px bg-border" />
+          <span className="flex items-center gap-1.5"><CalendarDays className="h-3.5 w-3.5" /> Week {activeSeason?.current_week || 0}</span>
+        </div>
+      </div>
+
+      {activeSeason ? (
+        <>
+          <div className="mb-8 grid grid-cols-2 gap-y-6 border-b border-border pb-8 md:grid-cols-4">
+            <Metric label="Leader" value={standings[0]?.username || '—'} detail={`${standings[0]?.points || 0} points`} />
+            <Metric label="Top scorer" value={topScorer?.username || '—'} detail={`${topScorer?.goals || 0} goals`} />
+            <Metric label="Played" value={completedMatches.length} detail={`${fixtures.length} still scheduled`} />
+            <Metric label="Goals" value={totalGoals} detail={completedMatches.length ? `${(totalGoals / completedMatches.length).toFixed(1)} per match` : 'No results yet'} />
+          </div>
+
+          <Tabs defaultValue="standings" className="w-full">
+            <div className="mb-5 overflow-x-auto border-b border-border scrollbar-hide">
+              <TabsList className="h-auto min-w-max justify-start gap-6 rounded-none bg-transparent p-0">
+                {[
+                  ['standings', 'Table'], ['fixtures', 'Fixtures'], ['results', 'Results'],
+                  ['players', 'Participants'], ['stats', 'Numbers'], ['history', 'Archive'],
+                ].map(([value, label]) => (
+                  <TabsTrigger key={value} value={value} className="rounded-none border-b-2 border-transparent px-0 pb-3 pt-1 text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground shadow-none data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:text-foreground data-[state=active]:shadow-none">
+                    {label}
+                  </TabsTrigger>
+                ))}
+              </TabsList>
+            </div>
+
+            <TabsContent value="standings" className="mt-0">
+              <div className="overflow-hidden rounded-lg border border-border bg-card/50">
+                <PanelHeader eyebrow="Current standings" title={activeSeason.name} detail="Three points for a win · one for a draw" />
+                <div className="overflow-x-auto">
+                  <Table className="min-w-[760px]">
+                    <TableHeader>
+                      <TableRow className="border-border bg-secondary/30 hover:bg-secondary/30">
+                        <TableHead className="sticky left-0 z-10 w-12 bg-[#100d16] text-center">Pos</TableHead>
+                        <TableHead className="sticky left-12 z-10 min-w-48 bg-[#100d16]">Participant</TableHead>
+                        <TableHead className="text-center">P</TableHead><TableHead className="text-center">W</TableHead>
+                        <TableHead className="text-center">D</TableHead><TableHead className="text-center">L</TableHead>
+                        <TableHead className="text-center">GF</TableHead><TableHead className="text-center">GA</TableHead>
+                        <TableHead className="text-center">GD</TableHead><TableHead className="text-center text-foreground">Pts</TableHead>
+                        <TableHead>Last five</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {standings.map((row, index) => (
+                        <TableRow key={row.playerId} className="border-border/70 hover:bg-secondary/30">
+                          <TableCell className="sticky left-0 z-10 bg-card text-center font-orbitron text-xs font-semibold"><span className={cn(index === 0 && 'text-primary')}>{String(index + 1).padStart(2, '0')}</span></TableCell>
+                          <TableCell className="sticky left-12 z-10 bg-card"><div className="flex items-center gap-2.5"><PlayerAvatar player={playerMap.get(row.playerId)} size="sm" /><span className="font-medium">{row.username}</span></div></TableCell>
+                          <TableCell className="text-center">{row.played}</TableCell><TableCell className="text-center">{row.wins}</TableCell>
+                          <TableCell className="text-center text-muted-foreground">{row.draws}</TableCell><TableCell className="text-center text-muted-foreground">{row.losses}</TableCell>
+                          <TableCell className="text-center">{row.goalsFor}</TableCell><TableCell className="text-center text-muted-foreground">{row.goalsAgainst}</TableCell>
+                          <TableCell className="text-center">{row.goalDifference > 0 ? `+${row.goalDifference}` : row.goalDifference}</TableCell>
+                          <TableCell className="text-center font-orbitron font-bold text-primary">{row.points}</TableCell><TableCell><FormIndicator form={row.form} /></TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                  {standings.length === 0 && <EmptyState title="The table is waiting" detail="Add the confirmed participants to this season to start the competition table." />}
+                </div>
+              </div>
+            </TabsContent>
+
+            <TabsContent value="fixtures" className="mt-0">
+              <div className="overflow-hidden rounded-lg border border-border bg-card/50">
+                <PanelHeader eyebrow="Match centre" title="Upcoming fixtures" />
+                {fixtures.map((match) => <MatchRow key={match.id} match={match} playerMap={playerMap} completed={false} />)}
+                {fixtures.length === 0 && <EmptyState title="No fixtures scheduled" detail="The next round will appear here as soon as the match list is published." />}
+              </div>
+            </TabsContent>
+
+            <TabsContent value="results" className="mt-0">
+              <div className="overflow-hidden rounded-lg border border-border bg-card/50">
+                <PanelHeader eyebrow="Match centre" title="Latest results" />
+                {results.map((match) => <MatchRow key={match.id} match={match} playerMap={playerMap} completed />)}
+                {results.length === 0 && <EmptyState title="No final scores yet" detail="Completed matches will be recorded here and reflected in the table automatically." />}
+              </div>
+            </TabsContent>
+
+            <TabsContent value="players" className="mt-0">
+              {seasonPlayers.length > 0 ? (
+                <div className="grid gap-px overflow-hidden rounded-lg border border-border bg-border sm:grid-cols-2 lg:grid-cols-3">
+                  {seasonPlayers.map((player) => {
+                    const stats = playerStats.find((item) => item.playerId === player.id);
+                    return (
+                      <article key={player.id} className="bg-card p-5">
+                        <div className="flex items-center gap-3"><PlayerAvatar player={player} size="lg" /><div className="min-w-0"><h3 className="truncate font-semibold">{player.username}</h3><p className="mt-0.5 text-xs text-muted-foreground">{stats?.played || 0} matches played</p></div></div>
+                        <dl className="mt-5 grid grid-cols-4 border-y border-border py-3 text-center">
+                          {([['W', stats?.wins || 0], ['D', stats?.draws || 0], ['L', stats?.losses || 0], ['GF', stats?.goals || 0]] as const).map(([label, value]) => (
+                            <div key={label}><dt className="text-[10px] font-semibold text-muted-foreground">{label}</dt><dd className="mt-1 font-orbitron text-sm font-semibold">{value}</dd></div>
+                          ))}
+                        </dl>
+                        <div className="mt-4 flex min-h-[24px] items-center justify-between gap-3"><span className="text-xs text-muted-foreground">Recent form</span>{stats?.form.length ? <FormIndicator form={stats.form} /> : <span className="text-xs text-muted-foreground">—</span>}</div>
+                        {player.achievements?.length > 0 && <div className="mt-4"><BadgeList badges={player.achievements} /></div>}
+                      </article>
+                    );
+                  })}
+                </div>
+              ) : <div className="rounded-lg border border-border bg-card/50"><EmptyState title="No participants registered" detail="Add the confirmed tournament participants in the admin portal and they will appear here." /></div>}
+            </TabsContent>
+
+            <TabsContent value="stats" className="mt-0">
+              <div className="grid gap-4 lg:grid-cols-3">
+                <RankingList eyebrow="Goals" title="Top scorers" icon={<Target className="h-4 w-4" />} rows={playerStats.slice().sort((a, b) => b.goals - a.goals).map((item) => ({ id: item.playerId, name: item.username, value: item.goals }))} />
+                <RankingList eyebrow="Results" title="Most wins" icon={<Award className="h-4 w-4" />} rows={playerStats.slice().sort((a, b) => b.wins - a.wins).map((item) => ({ id: item.playerId, name: item.username, value: item.wins }))} />
+                <RankingList eyebrow="Defense" title="Fewest conceded" icon={<Shield className="h-4 w-4" />} rows={standings.filter((row) => row.played > 0).sort((a, b) => a.goalsAgainst - b.goalsAgainst).map((item) => ({ id: item.playerId, name: item.username, value: item.goalsAgainst }))} />
+              </div>
+            </TabsContent>
+
+            <TabsContent value="history" className="mt-0">
+              <div className="overflow-hidden rounded-lg border border-border bg-card/50">
+                <PanelHeader eyebrow="Competition archive" title="Previous seasons" />
+                {completedSeasons.map((season) => {
+                  const archivedMatches = matches.filter((match) => match.season_id === season.id);
+                  const archivedPlayers = players.filter((player) => player.season_id === season.id);
+                  const archivedResults = archivedMatches.filter((match) => match.status === 'completed');
+                  const champion = calculateStandings(archivedMatches, archivedPlayers)[0];
+                  return (
+                    <article key={season.id} className="flex flex-col gap-4 border-b border-border px-4 py-5 last:border-b-0 sm:flex-row sm:items-center sm:justify-between sm:px-6">
+                      <div className="flex items-center gap-3"><span className="flex h-10 w-10 items-center justify-center rounded-full border border-primary/20 bg-primary/10 text-primary"><History className="h-4 w-4" /></span><div><h3 className="font-semibold">{season.name}</h3><p className="mt-0.5 text-xs text-muted-foreground">{archivedPlayers.length} participants · {archivedResults.length} matches</p></div></div>
+                      <div className="flex items-center gap-3 sm:text-right"><div><p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Champion</p><p className="mt-1 text-sm font-semibold">{champion?.username || 'Not recorded'}</p></div><ChevronRight className="h-4 w-4 text-muted-foreground" /></div>
+                    </article>
+                  );
+                })}
+                {completedSeasons.length === 0 && <EmptyState title="The archive is empty" detail="Completed tournaments will remain here as part of the community record." />}
+              </div>
+            </TabsContent>
+          </Tabs>
+        </>
+      ) : <div className="rounded-lg border border-border bg-card/50"><EmptyState title="No competition configured" detail="Create a season in the admin portal before adding participants and fixtures." /></div>}
+    </section>
+  );
+}
+
+function PanelHeader({ eyebrow, title, detail }: { eyebrow: string; title: string; detail?: string }) {
+  return (
+    <div className="flex items-end justify-between border-b border-border px-4 py-4 sm:px-6">
+      <div><p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-primary">{eyebrow}</p><h2 className="mt-1 text-lg font-semibold">{title}</h2></div>
+      {detail && <p className="hidden text-xs text-muted-foreground sm:block">{detail}</p>}
+    </div>
+  );
+}
+
+function RankingList({ eyebrow, title, icon, rows }: { eyebrow: string; title: string; icon: React.ReactNode; rows: { id: string; name: string; value: number }[] }) {
+  return (
+    <section className="overflow-hidden rounded-lg border border-border bg-card/50">
+      <div className="border-b border-border px-5 py-4"><p className="flex items-center gap-2 text-[10px] font-semibold uppercase tracking-[0.18em] text-primary">{icon}{eyebrow}</p><h2 className="mt-1 text-base font-semibold">{title}</h2></div>
+      <div>
+        {rows.slice(0, 5).map((row, index) => <div key={row.id} className="grid grid-cols-[28px_1fr_auto] items-center gap-3 border-b border-border px-5 py-3 last:border-b-0"><span className="font-orbitron text-[10px] text-muted-foreground">{String(index + 1).padStart(2, '0')}</span><span className="truncate text-sm font-medium">{row.name}</span><span className="font-orbitron text-sm font-semibold text-primary">{row.value}</span></div>)}
+        {rows.length === 0 && <p className="px-5 py-8 text-center text-sm text-muted-foreground">No results recorded</p>}
+      </div>
+    </section>
   );
 }
