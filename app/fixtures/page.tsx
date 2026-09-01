@@ -1,169 +1,22 @@
 "use client";
 
-import React from "react";
-import { motion } from "framer-motion";
+import { useEffect, useMemo, useState } from "react";
+import { Calendar, Plus, RefreshCw, Search } from "lucide-react";
 import { DashboardLayout } from "@/components/layout/dashboard-layout";
 import { GlassCard } from "@/components/ui/glass-card";
-import { Calendar } from "lucide-react";
+import { GlowButton } from "@/components/ui/glow-button";
+import { calculateStandings, fetchLeagueData, type Fixture, type League, type Team } from "@/lib/league-data";
 
-interface Fixture {
-  id: string;
-  homeTeam: string;
-  awayTeam: string;
-  homeScore?: number;
-  awayScore?: number;
-  date: string;
-  status: "upcoming" | "live" | "completed";
-}
-
-const mockFixtures: Fixture[] = [
-  {
-    id: "1",
-    homeTeam: "MCI",
-    awayTeam: "LIV",
-    date: "2024-03-15 20:00",
-    status: "completed",
-    homeScore: 2,
-    awayScore: 1,
-  },
-  {
-    id: "2",
-    homeTeam: "MUN",
-    awayTeam: "ARS",
-    date: "2024-03-16 15:00",
-    status: "completed",
-    homeScore: 1,
-    awayScore: 1,
-  },
-  {
-    id: "3",
-    homeTeam: "TOT",
-    awayTeam: "CHE",
-    date: "2024-03-17 12:30",
-    status: "upcoming",
-  },
-  {
-    id: "4",
-    homeTeam: "LIV",
-    awayTeam: "MUN",
-    date: "2024-03-18 20:00",
-    status: "upcoming",
-  },
-  {
-    id: "5",
-    homeTeam: "ARS",
-    awayTeam: "MCI",
-    date: "2024-03-19 15:00",
-    status: "upcoming",
-  },
-];
-
-const statusStyles = {
-  upcoming: "bg-blue-500/20 text-blue-300",
-  live: "bg-red-500/20 text-red-300 animate-pulse",
-  completed: "bg-green-500/20 text-green-300",
-};
-
-const statusLabels = {
-  upcoming: "Upcoming",
-  live: "Live",
-  completed: "Completed",
-};
-
+const labels = { scheduled: "Upcoming", live: "Live", completed: "Completed", postponed: "Postponed" };
 export default function FixturesPage() {
-  return (
-    <DashboardLayout>
-      {/* Header */}
-      <motion.div
-        initial={{ opacity: 0, y: -20 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="mb-8"
-      >
-        <h1 className="text-4xl font-bold mb-2">Fixtures</h1>
-        <p className="text-foreground/60">View all upcoming and completed matches</p>
-      </motion.div>
-
-      {/* Fixtures list */}
-      <div className="space-y-4">
-        {mockFixtures.map((fixture, idx) => (
-          <motion.div
-            key={fixture.id}
-            initial={{ opacity: 0, x: -20 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ delay: idx * 0.05 }}
-          >
-            <GlassCard variant="default" className="p-6">
-              <div className="flex items-center justify-between flex-wrap gap-4">
-                {/* Date and Status */}
-                <div className="flex items-center gap-4">
-                  <div className="bg-primary/10 p-3 rounded-lg">
-                    <Calendar className="w-5 h-5 text-primary" />
-                  </div>
-                  <div>
-                    <p className="text-sm text-foreground/60">
-                      {new Date(fixture.date).toLocaleDateString("en-US", {
-                        weekday: "short",
-                        month: "short",
-                        day: "numeric",
-                      })}
-                    </p>
-                    <p className="font-medium">
-                      {new Date(fixture.date).toLocaleTimeString("en-US", {
-                        hour: "2-digit",
-                        minute: "2-digit",
-                      })}
-                    </p>
-                  </div>
-                </div>
-
-                {/* Match Details */}
-                <div className="flex items-center gap-6">
-                  <div className="text-center">
-                    <p className="font-bold text-lg">{fixture.homeTeam}</p>
-                  </div>
-
-                  <div className="text-center">
-                    {fixture.status === "completed" ? (
-                      <div>
-                        <p className="text-2xl font-bold text-primary">
-                          {fixture.homeScore} - {fixture.awayScore}
-                        </p>
-                        <p className="text-xs text-foreground/60 uppercase">
-                          Final
-                        </p>
-                      </div>
-                    ) : fixture.status === "live" ? (
-                      <div>
-                        <p className="text-2xl font-bold text-red-400">●</p>
-                        <p className="text-xs text-red-300 uppercase">Live</p>
-                      </div>
-                    ) : (
-                      <div>
-                        <p className="text-xs text-foreground/60 uppercase">
-                          vs
-                        </p>
-                      </div>
-                    )}
-                  </div>
-
-                  <div className="text-center">
-                    <p className="font-bold text-lg">{fixture.awayTeam}</p>
-                  </div>
-                </div>
-
-                {/* Status Badge */}
-                <span
-                  className={`px-3 py-1 rounded-full text-xs font-medium ${
-                    statusStyles[fixture.status]
-                  }`}
-                >
-                  {statusLabels[fixture.status]}
-                </span>
-              </div>
-            </GlassCard>
-          </motion.div>
-        ))}
-      </div>
-    </DashboardLayout>
-  );
+  const [data, setData] = useState<{ leagues: League[]; teams: Team[]; fixtures: Fixture[] } | null>(null);
+  const [query, setQuery] = useState(""); const [status, setStatus] = useState("all"); const [leagueId, setLeagueId] = useState("all"); const [loading, setLoading] = useState(true); const [error, setError] = useState("");
+  const load = async () => { setLoading(true); setError(""); try { setData(await fetchLeagueData()); } catch { setError("Fixtures could not be loaded. Check the Supabase connection and try again."); } finally { setLoading(false); } };
+  useEffect(() => { load(); }, []);
+  const teamMap = useMemo(() => new Map(data?.teams.map((team) => [team.id, team]) ?? []), [data]);
+  const fixtures = data?.fixtures.filter((fixture) => (!leagueId || leagueId === "all" || fixture.league_id === leagueId) && (!status || status === "all" || fixture.status === status) && (!query || `${teamMap.get(fixture.home_team_id)?.name} ${teamMap.get(fixture.away_team_id)?.name}`.toLowerCase().includes(query.toLowerCase()))) ?? [];
+  return <DashboardLayout><div className="mb-8 flex flex-col gap-4 md:flex-row md:items-end md:justify-between"><div><p className="mb-2 text-sm font-semibold uppercase tracking-[0.2em] text-primary">Match centre</p><h1 className="text-4xl font-bold">Fixtures</h1><p className="mt-2 text-foreground/60">Live, upcoming, and completed league results.</p></div><GlowButton onClick={load} variant="outline"><RefreshCw className="mr-2 h-4 w-4" />Refresh</GlowButton></div>
+    <GlassCard className="mb-6 p-4" animated={false}><div className="flex flex-col gap-3 md:flex-row"><label className="flex flex-1 items-center gap-2 rounded-lg border border-border bg-background/50 px-3"><Search className="h-4 w-4 text-foreground/50" /><span className="sr-only">Search fixtures</span><input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search teams" className="w-full bg-transparent py-2 text-sm outline-none" /></label><select value={leagueId} onChange={(e) => setLeagueId(e.target.value)} className="rounded-lg border border-border bg-background px-3 py-2 text-sm"><option value="all">All leagues</option>{data?.leagues.map((league) => <option key={league.id} value={league.id}>{league.name} · {league.season}</option>)}</select><select value={status} onChange={(e) => setStatus(e.target.value)} className="rounded-lg border border-border bg-background px-3 py-2 text-sm"><option value="all">All statuses</option>{Object.keys(labels).map((key) => <option key={key} value={key}>{labels[key as keyof typeof labels]}</option>)}</select></div></GlassCard>
+    {loading ? <GlassCard className="p-10 text-center">Loading fixtures…</GlassCard> : error ? <GlassCard className="p-10 text-center"><p className="text-red-300">{error}</p><GlowButton className="mt-4" onClick={load}>Try again</GlowButton></GlassCard> : fixtures.length === 0 ? <GlassCard className="p-10 text-center"><Calendar className="mx-auto mb-3 h-8 w-8 text-primary" /><h2 className="text-lg font-semibold">No fixtures found</h2><p className="mt-1 text-sm text-foreground/60">Try changing your filters.</p></GlassCard> : <div className="space-y-3">{fixtures.map((fixture) => { const home = teamMap.get(fixture.home_team_id); const away = teamMap.get(fixture.away_team_id); return <GlassCard key={fixture.id} className="p-5" animated={false}><div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between"><div className="flex items-center gap-3 text-sm text-foreground/60"><Calendar className="h-5 w-5 text-primary" /><div><p>{new Date(fixture.kickoff_at).toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" })}</p><p className="font-medium text-foreground">{new Date(fixture.kickoff_at).toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" })}</p></div></div><div className="flex items-center justify-center gap-5 text-center"><div><p className="font-bold">{home?.short_name ?? "—"}</p><p className="text-xs text-foreground/50">{home?.name}</p></div><div className="min-w-20"><p className="text-xl font-bold text-primary">{fixture.status === "completed" ? `${fixture.home_score} – ${fixture.away_score}` : "vs"}</p></div><div><p className="font-bold">{away?.short_name ?? "—"}</p><p className="text-xs text-foreground/50">{away?.name}</p></div></div><span className={`rounded-full px-3 py-1 text-xs font-semibold ${fixture.status === "live" ? "bg-red-500/20 text-red-300" : fixture.status === "completed" ? "bg-green-500/20 text-green-300" : "bg-primary/20 text-primary"}`}>{labels[fixture.status]}</span></div></GlassCard>; })}</div>}
+  </DashboardLayout>;
 }
