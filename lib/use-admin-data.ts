@@ -14,6 +14,7 @@ export function useAdminData<T>(endpoint: string) {
       const res = await fetch(endpoint);
       if (!res.ok) throw new Error('Failed to load');
       const json = await res.json();
+      if (json && !Array.isArray(json) && json.error) throw new Error(json.error);
       setData(json);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Unknown error');
