@@ -10,6 +10,7 @@ import { Button } from '@/components/ui/button';
 import { GlassCard } from '@/components/site/glass-card';
 import { BadgeList } from '@/components/site/badge';
 import { FormIndicator } from '@/components/site/form-indicator';
+import { LeagueMatchCenter } from '@/components/site/league-match-center';
 import { calculateStandings } from '@/lib/standings';
 import type { Settings, Member, Announcement, EventItem, LeagueSeason, LeaguePlayer, LeagueMatch } from '@/lib/types';
 import type { DiscordStats } from '@/lib/discord';
@@ -245,6 +246,9 @@ export function HomeClient({
             </GlassCard>
           </div>
         </div>
+
+        {/* League Match Center */}
+        <LeagueMatchCenter season={season} players={players} matches={matches} standings={standings} />
 
         {/* Community Stats */}
         <div>
