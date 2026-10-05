@@ -1,3 +1,4 @@
+import { revalidatePath } from 'next/cache';
 import { NextRequest, NextResponse } from 'next/server';
 import { supabase } from '@/lib/supabase';
 import type { Member } from '@/lib/types';
@@ -23,6 +24,11 @@ export async function POST(req: NextRequest) {
     const body = await req.json();
     const { data, error } = await supabase.from('members').insert(body).select().single();
     if (error) return databaseError(error, 400);
+    try {
+      revalidatePath('/', 'layout');
+    } catch (error) {
+      console.error('[v0] Public page revalidation failed:', error);
+    }
     return NextResponse.json(data);
   } catch (error) {
     return databaseError(error, 400);
@@ -36,6 +42,11 @@ export async function PATCH(req: NextRequest) {
     const body = await req.json();
     const { data, error } = await supabase.from('members').update(body).eq('id', id).select().single();
     if (error) return databaseError(error, 400);
+    try {
+      revalidatePath('/', 'layout');
+    } catch (error) {
+      console.error('[v0] Public page revalidation failed:', error);
+    }
     return NextResponse.json(data);
   } catch (error) {
     return databaseError(error, 400);
@@ -48,6 +59,11 @@ export async function DELETE(req: NextRequest) {
     if (!id) return NextResponse.json({ error: 'Member id is required' }, { status: 400 });
     const { error } = await supabase.from('members').delete().eq('id', id);
     if (error) return databaseError(error, 400);
+    try {
+      revalidatePath('/', 'layout');
+    } catch (error) {
+      console.error('[v0] Public page revalidation failed:', error);
+    }
     return NextResponse.json({ success: true });
   } catch (error) {
     return databaseError(error);
